@@ -11,23 +11,45 @@ export interface MultiNodeDefinition {
   }[];
 }
 
-export const multiNodeDefinition: Record<string, MultiNodeDefinition> = {
+const multiNodeDefinition: Record<string, MultiNodeDefinition> = {
   "Value Investors": {
     name: "Value Investors",
     nodes: [
-      { componentName: "Text Input", offsetX: 0, offsetY: 0 },
-      { componentName: "Ben Graham", offsetX: 400, offsetY: -250 },
+      { componentName: "Stock Tickers", offsetX: 0, offsetY: 0 },
+      { componentName: "Ben Graham", offsetX: 400, offsetY: -300 },
       { componentName: "Charlie Munger", offsetX: 400, offsetY: 0 },
-      { componentName: "Warren Buffett", offsetX: 400, offsetY: 250 },
-      { componentName: "Text Output", offsetX: 800, offsetY: 0 },
+      { componentName: "Warren Buffett", offsetX: 400, offsetY: 300 },
+      { componentName: "Portfolio Manager", offsetX: 800, offsetY: 0 },
     ],
     edges: [
-      { source: "Text Input", target: "Ben Graham" },
-      { source: "Text Input", target: "Charlie Munger" },
-      { source: "Text Input", target: "Warren Buffett" },
-      { source: "Ben Graham", target: "Text Output" },
-      { source: "Charlie Munger", target: "Text Output" },
-      { source: "Warren Buffett", target: "Text Output" },
+      { source: "Stock Tickers", target: "Ben Graham" },
+      { source: "Stock Tickers", target: "Charlie Munger" },
+      { source: "Stock Tickers", target: "Warren Buffett" },
+      { source: "Ben Graham", target: "Portfolio Manager" },
+      { source: "Charlie Munger", target: "Portfolio Manager" },
+      { source: "Warren Buffett", target: "Portfolio Manager" },
+    ],
+  },
+  "Data Wizards": {
+    name: "Data Wizards",
+    nodes: [
+      { componentName: "Stock Tickers", offsetX: 0, offsetY: 0 },
+      { componentName: "Technical Analyst", offsetX: 400, offsetY: -550 },
+      { componentName: "Fundamentals Analyst", offsetX: 400, offsetY: -200 },
+      { componentName: "Sentiment Analyst", offsetX: 400, offsetY: 150 },
+      { componentName: "Valuation Analyst", offsetX: 400, offsetY: 500 },
+      { componentName: "Portfolio Manager", offsetX: 800, offsetY: 0 },
+    ],
+    edges: [
+      { source: "Stock Tickers", target: "Technical Analyst" },
+      { source: "Stock Tickers", target: "Fundamentals Analyst" },
+      { source: "Stock Tickers", target: "Sentiment Analyst" },
+      { source: "Stock Tickers", target: "Valuation Analyst" },
+      { source: "Technical Analyst", target: "Portfolio Manager" },
+      { source: "Fundamentals Analyst", target: "Portfolio Manager" },
+      { source: "Sentiment Analyst", target: "Portfolio Manager" },
+      { source: "Valuation Analyst", target: "Portfolio Manager" },
+
     ],
   },
 };

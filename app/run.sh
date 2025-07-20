@@ -152,19 +152,42 @@ setup_environment() {
     fi
 }
 
+# Function to setup database
+setup_database() {
+    print_status "Setting up database..."
+    
+    # Database will be automatically created by the backend when it starts
+    print_status "Database: SQLite (hedge_fund.db)"
+    print_status "Location: Project root directory"
+    print_status "Tables will be created automatically on first backend startup"
+    
+    # Check if database already exists
+    if [[ -f "../hedge_fund.db" ]]; then
+        print_success "Database file already exists!"
+    else
+        print_status "Database will be created when backend starts for the first time"
+    fi
+}
+
 # Function to install backend dependencies
 install_backend() {
     print_status "Installing backend dependencies..."
     
     cd backend
     
-    # Check if dependencies are already installed
-    if poetry check >/dev/null 2>&1; then
+    # Check if dependencies are actually installed and working
+    if poetry run python -c "import uvicorn; import fastapi" >/dev/null 2>&1; then
         print_success "Backend dependencies already installed!"
     else
         print_status "Installing Python dependencies with Poetry..."
         poetry install
-        print_success "Backend dependencies installed!"
+        if poetry run python -c "import uvicorn; import fastapi" >/dev/null 2>&1; then
+            print_success "Backend dependencies installed!"
+        else
+            print_error "Failed to install backend dependencies properly"
+            print_error "Try running: cd backend && poetry install --sync"
+            exit 1
+        fi
     fi
     
     cd ..
@@ -225,10 +248,11 @@ start_services() {
     
     # Start backend
     print_status "Starting backend server..."
-    cd backend
-    poetry run uvicorn main:app --reload > "$BACKEND_LOG" 2>&1 &
-    BACKEND_PID=$!
+    # Run from the app directory (parent of backend) to ensure proper Python imports
     cd ..
+    poetry run uvicorn app.backend.main:app --reload --host 127.0.0.1 --port 8000 > "$LOG_DIR/backend.log" 2>&1 &
+    BACKEND_PID=$!
+    cd app
     
     # Wait a moment for backend to start
     sleep 3
@@ -241,6 +265,16 @@ start_services() {
     fi
     
     print_success "Backend server started (PID: $BACKEND_PID)"
+    
+    # Check database initialization
+    print_status "Checking database initialization..."
+    sleep 2  # Give backend time to initialize database
+    
+    if [[ -f "../hedge_fund.db" ]]; then
+        print_success "Database initialized successfully!"
+    else
+        print_warning "Database file not found, but will be created on first API call"
+    fi
     
     # Start frontend
     print_status "Starting frontend development server..."
@@ -274,6 +308,7 @@ start_services() {
     print_status "Frontend (Web Interface): http://localhost:5173"
     print_status "Backend (API): http://localhost:8000"
     print_status "API Documentation: http://localhost:8000/docs"
+    print_status "Database: SQLite (hedge_fund.db in project root)"
     echo ""
     print_status "Press Ctrl+C to stop both services"
     echo ""
@@ -307,6 +342,7 @@ main() {
     check_directory
     check_prerequisites
     setup_environment
+    setup_database
     install_backend
     install_frontend
     start_services
@@ -323,6 +359,7 @@ if [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]]; then
     echo "  2. Install backend dependencies using Poetry"
     echo "  3. Install frontend dependencies using npm"
     echo "  4. Start both the backend API server and frontend development server"
+    echo "  5. Automatically initialize SQLite database on first run"
     echo ""
     echo "Requirements:"
     echo "  - Node.js and npm (https://nodejs.org/)"
@@ -333,6 +370,7 @@ if [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]]; then
     echo "  - Frontend: http://localhost:5173"
     echo "  - Backend API: http://localhost:8000"
     echo "  - API Docs: http://localhost:8000/docs"
+    echo "  - Database: SQLite file (hedge_fund.db) in project root"
     echo ""
     exit 0
 fi
