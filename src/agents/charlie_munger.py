@@ -7,6 +7,23 @@ import json
 from typing_extensions import Literal
 from src.utils.progress import progress
 from src.utils.llm import call_llm
+import os
+import logging
+import math
+
+# 配置日志系统
+log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'logs')
+os.makedirs(log_dir, exist_ok=True)
+log_file = os.path.join(log_dir, 'charlie_munger_analysis.log')
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler(log_file, encoding='utf-8'),
+        logging.StreamHandler()  # 同时输出到控制台
+    ]
+)
 
 class CharlieMungerSignal(BaseModel):
     signal: Literal["bullish", "bearish", "neutral"]
@@ -69,13 +86,14 @@ def charlie_munger_agent(state: AgentState, agent_id: str = "charlie_munger_agen
         
         progress.update_status(agent_id, ticker, "Fetching company news")
         # Munger avoids businesses with frequent negative press
-        company_news = get_company_news(
-            ticker,
-            end_date,
-            # Look back 1 year for news
-            start_date=None,
-            limit=100
-        )
+        # company_news = get_company_news(
+        #     ticker,
+        #     end_date,
+        #     # Look back 1 year for news
+        #     start_date=None,
+        #     limit=100
+        # )
+        company_news = []
         
         progress.update_status(agent_id, ticker, "Analyzing moat strength")
         moat_analysis = analyze_moat_strength(metrics, financial_line_items)
@@ -98,6 +116,14 @@ def charlie_munger_agent(state: AgentState, agent_id: str = "charlie_munger_agen
             valuation_analysis["score"] * 0.15
         )
         
+        # 打印分值的计算过程
+        logging.info(f"股票 {ticker} 的分值计算过程:")
+        logging.info(f"  护城河强度得分: {moat_analysis['score']}，权重: 0.35，加权得分: {moat_analysis['score'] * 0.35}")
+        logging.info(f"  管理层质量得分: {management_analysis['score']}，权重: 0.25，加权得分: {management_analysis['score'] * 0.25}")
+        logging.info(f"  业务可预测性得分: {predictability_analysis['score']}，权重: 0.25，加权得分: {predictability_analysis['score'] * 0.25}")
+        logging.info(f"  估值得分: {valuation_analysis['score']}，权重: 0.15，加权得分: {valuation_analysis['score'] * 0.15}")
+        logging.info(f"总得分: {total_score}")
+
         max_possible_score = 10  # Scale to 0-10
         
         # Generate a simple buy/hold/sell signal
@@ -117,7 +143,7 @@ def charlie_munger_agent(state: AgentState, agent_id: str = "charlie_munger_agen
             "predictability_analysis": predictability_analysis,
             "valuation_analysis": valuation_analysis,
             # Include some qualitative assessment from news
-            "news_sentiment": analyze_news_sentiment(company_news) if company_news else "No news data available"
+            # "news_sentiment": analyze_news_sentiment(company_news) if company_news else "No news data available"
         }
         
         progress.update_status(agent_id, ticker, "Generating Charlie Munger analysis")
@@ -168,7 +194,7 @@ def analyze_moat_strength(metrics: list, financial_line_items: list) -> dict:
     score = 0
     details = []
     
-    if not metrics or not financial_line_items:
+    if  not financial_line_items:
         return {
             "score": 0,
             "details": "Insufficient data to analyze moat strength"
@@ -180,7 +206,7 @@ def analyze_moat_strength(metrics: list, financial_line_items: list) -> dict:
     
     if roic_values:
         # Check if ROIC consistently above 15% (Munger's threshold)
-        high_roic_count = sum(1 for r in roic_values if r > 0.15)
+        high_roic_count = sum(1 for r in roic_values if r > 15)
         if high_roic_count >= len(roic_values) * 0.8:  # 80% of periods show high ROIC
             score += 3
             details.append(f"Excellent ROIC: >15% in {high_roic_count}/{len(roic_values)} periods")
@@ -254,9 +280,12 @@ def analyze_moat_strength(metrics: list, financial_line_items: list) -> dict:
         score += 1
         details.append("Significant goodwill/intangible assets, suggesting brand value or IP")
     
+    # 打印护城河强度得分的计算过程
+    logging.info(f"股票分析中，护城河强度原始得分: {score}")
     # Scale score to 0-10 range
     final_score = min(10, score * 10 / 9)  # Max possible raw score is 9
-    
+    logging.info(f"护城河强度最终得分 (0-10): {final_score}")
+
     return {
         "score": final_score,
         "details": "; ".join(details)
@@ -413,10 +442,13 @@ def analyze_management_quality(financial_line_items: list, insider_trades: list)
     else:
         details.append("Insufficient share count data")
     
+    # 打印管理层质量得分的计算过程
+    logging.info(f"股票分析中，管理层质量原始得分: {score}")
     # Scale score to 0-10 range
     # Maximum possible raw score would be 12 (3+3+2+2+2)
     final_score = max(0, min(10, score * 10 / 12))
-    
+    logging.info(f"管理层质量最终得分 (0-10): {final_score}")
+
     return {
         "score": final_score,
         "details": "; ".join(details)
@@ -538,10 +570,13 @@ def analyze_predictability(financial_line_items: list) -> dict:
     else:
         details.append("Insufficient free cash flow history")
     
+    # 打印业务可预测性得分的计算过程
+    logging.info(f"股票分析中，业务可预测性原始得分: {score}")
     # Scale score to 0-10 range
     # Maximum possible raw score would be 10 (3+3+2+2)
     final_score = min(10, score * 10 / 10)
-    
+    logging.info(f"业务可预测性最终得分 (0-10): {final_score}")
+
     return {
         "score": final_score,
         "details": "; ".join(details)
@@ -566,7 +601,7 @@ def calculate_munger_valuation(financial_line_items: list, market_cap: float) ->
     
     # Get FCF values (Munger's preferred "owner earnings" metric)
     fcf_values = [item.free_cash_flow for item in financial_line_items 
-                 if hasattr(item, 'free_cash_flow') and item.free_cash_flow is not None]
+                 if hasattr(item, 'free_cash_flow') and item.free_cash_flow is not None and not (isinstance(item.free_cash_flow, float) and math.isnan(item.free_cash_flow))]
     
     if not fcf_values or len(fcf_values) < 3:
         return {
@@ -645,10 +680,13 @@ def calculate_munger_valuation(financial_line_items: list, market_cap: float) ->
         else:
             details.append("Declining FCF trend is concerning")
     
+    # 打印估值得分的计算过程
+    logging.info(f"股票分析中，估值原始得分: {score}")
     # Scale score to 0-10 range
     # Maximum possible raw score would be 10 (4+3+3)
     final_score = min(10, score * 10 / 10) 
-    
+    logging.info(f"估值最终得分 (0-10): {final_score}")
+
     return {
         "score": final_score,
         "details": "; ".join(details),

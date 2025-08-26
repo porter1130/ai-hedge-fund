@@ -29,7 +29,7 @@ def call_llm(
     Returns:
         An instance of the specified Pydantic model
     """
-    
+    return default_factory()
     # Extract model configuration if state is provided and agent_name is available
     if state and agent_name:
         model_name, model_provider = get_agent_model_config(state, agent_name)

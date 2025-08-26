@@ -19,7 +19,7 @@ from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from src.utils.visualize import save_graph_as_png
 import json
-
+import tushare as ts
 # Load environment variables from .env file
 load_dotenv()
 
@@ -150,7 +150,12 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Parse tickers from comma-separated string
-    tickers = [ticker.strip() for ticker in args.tickers.split(",")]
+    pro=ts.pro_api()
+    df=pro.stock_basic(list_status='L',fields='ts_code',order_by='market_cap',order='desc')
+    tickers=df['ts_code'].tolist()
+
+    # tickers = [ticker.strip() for ticker in args.tickers.split(",")]
+    
 
     # Select analysts
     selected_analysts = None
